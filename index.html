@@ -1,1 +1,332 @@
-AirForce Identification System
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AERO-ID TACTICAL TRAINING SYSTEM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        body {
+            background-color: #030a16;
+            color: #00f0ff;
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden;
+        }
+
+        /* HUD & Cyberpunk Elements */
+        .hud-border {
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1), 0 0 15px rgba(0, 240, 255, 0.2);
+            position: relative;
+        }
+        
+        .hud-border::before, .hud-border::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 2px solid #00f0ff;
+        }
+        
+        .hud-border::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .hud-border::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+        .scanline {
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 240, 255, 0.4);
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            box-shadow: 0 0 10px #00f0ff;
+            animation: scan 4s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .btn-option {
+            background: rgba(0, 20, 40, 0.6);
+            border: 1px solid #00f0ff;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-option:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+            text-shadow: 0 0 5px #00f0ff;
+        }
+        
+        .btn-option.correct {
+            background: rgba(0, 255, 100, 0.2);
+            border-color: #00ff64;
+            color: #00ff64;
+            box-shadow: 0 0 15px rgba(0, 255, 100, 0.5);
+        }
+
+        .btn-option.wrong {
+            background: rgba(255, 0, 80, 0.2);
+            border-color: #ff0050;
+            color: #ff0050;
+            box-shadow: 0 0 15px rgba(255, 0, 80, 0.5);
+        }
+
+        .glitch-text {
+            text-shadow: 2px 0 0 rgba(255,0,0,0.5), -2px 0 0 rgba(0,255,255,0.5);
+        }
+
+        #image-container img {
+            filter: contrast(1.1) brightness(0.9) sepia(0.3) hue-rotate(180deg);
+            mix-blend-mode: luminosity;
+            transition: filter 0.5s;
+        }
+        
+        #image-container img.revealed {
+            filter: none;
+            mix-blend-mode: normal;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Header -->
+    <header class="w-full max-w-4xl mb-6 text-center">
+        <h1 class="text-3xl md:text-5xl font-bold tracking-widest glitch-text mb-2">AERO-ID SYSTEM</h1>
+        <p class="text-sm opacity-70 tracking-widest">[ TACTICAL AIRCRAFT RECOGNITION PROTOCOL - US / ROK / NATO ]</p>
+    </header>
+
+    <!-- Main HUD -->
+    <main class="w-full max-w-4xl hud-border bg-[#02050b] p-6 rounded-sm flex flex-col md:flex-row gap-6">
+        
+        <!-- Image Target Area -->
+        <div class="flex-1 relative">
+            <div class="absolute top-2 left-2 text-xs opacity-70 z-20">TARGET LOCK: <span id="q-counter">01/10</span></div>
+            <div class="hud-border h-64 md:h-80 w-full relative overflow-hidden bg-gray-900 flex items-center justify-center" id="image-container">
+                <div class="scanline"></div>
+                <img id="aircraft-img" src="" alt="Classified Target" class="object-cover w-full h-full">
+            </div>
+        </div>
+
+        <!-- Controls & Data Area -->
+        <div class="flex-1 flex flex-col justify-between">
+            <div>
+                <h2 class="text-xl mb-4 border-b border-[#00f0ff] pb-2 inline-block">IDENTIFY TARGET:</h2>
+                
+                <div id="options-grid" class="grid grid-cols-1 gap-3">
+                    <!-- Options injected by JS -->
+                </div>
+            </div>
+
+            <!-- Analysis / Feedback Panel -->
+            <div id="feedback-panel" class="mt-6 hidden">
+                <div class="hud-border p-3 bg-[rgba(0,40,80,0.5)]">
+                    <h3 id="feedback-status" class="text-lg font-bold mb-1"></h3>
+                    <p id="feedback-text" class="text-sm leading-relaxed text-gray-300"></p>
+                    <button id="next-btn" class="mt-3 w-full py-2 border border-[#00f0ff] hover:bg-[#00f0ff] hover:text-black transition-colors font-bold uppercase">
+                        INITIATE NEXT SCAN >>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Results Screen -->
+    <div id="results-screen" class="hidden w-full max-w-4xl hud-border bg-[#02050b] p-10 text-center mt-6">
+        <h2 class="text-4xl font-bold mb-4">TRAINING COMPLETE</h2>
+        <p class="text-2xl mb-6">FINAL ACCURACY: <span id="final-score" class="text-[#00ff64]"></span></p>
+        <button onclick="location.reload()" class="px-8 py-3 border border-[#00f0ff] hover:bg-[#00f0ff] hover:text-black transition-colors font-bold">
+            RESTART SIMULATION
+        </button>
+    </div>
+
+    <script>
+        // Database of military aircraft
+        const aircraftData = [
+            {
+                name: "F-22 Raptor",
+                nation: "US",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/F-22_Raptor_edit1.jpg/800px-F-22_Raptor_edit1.jpg",
+                options: ["F-35 Lightning II", "F-22 Raptor", "KF-21 Boramae", "F-15K Slam Eagle"],
+                explanation: "F-22는 미국의 5세대 스텔스 전투기입니다. 독특한 다이아몬드형 날개와 스텔스를 위한 각진 외형, 그리고 후면의 2차원 추력편향 노즐이 특징입니다."
+            },
+            {
+                name: "F-35A Lightning II",
+                nation: "US/ROK/NATO",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/F-35A_flight_%28cropped%29.jpg/800px-F-35A_flight_%28cropped%29.jpg",
+                options: ["F-22 Raptor", "Eurofighter Typhoon", "F-35A Lightning II", "Dassault Rafale"],
+                explanation: "F-35는 미국, 한국 및 여러 나토 국가에서 운용하는 5세대 스텔스기입니다. 단발 엔진 구조이며 F-22에 비해 동체가 다소 통통한 형상을 띄고 있습니다."
+            },
+            {
+                name: "F-15K Slam Eagle",
+                nation: "ROK",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/ROKAF_F-15K.jpg/800px-ROKAF_F-15K.jpg",
+                options: ["F-15K Slam Eagle", "F-16 Fighting Falcon", "A-10 Thunderbolt II", "KF-21 Boramae"],
+                explanation: "한국 공군의 핵심 전천후 전폭기인 F-15K입니다. 어두운 회색 도색과 동체 양옆의 거대한 컨포멀 연료탱크, 엄청난 무장 탑재량이 시각적 특징입니다."
+            },
+            {
+                name: "KF-21 Boramae",
+                nation: "ROK",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/KAI_KF-21_Boramae.jpg/800px-KAI_KF-21_Boramae.jpg",
+                options: ["F-22 Raptor", "F-35A Lightning II", "KF-21 Boramae", "Eurofighter Typhoon"],
+                explanation: "한국이 독자 개발한 4.5세대 전투기 보라매입니다. F-22와 흡사한 스텔스 형상을 갖추고 있으나, 초기형은 무장을 동체 하단에 반매립 형태로 장착합니다."
+            },
+            {
+                name: "Eurofighter Typhoon",
+                nation: "NATO",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Eurofighter_Typhoon_-_RIAT_2016_%2828551323861%29.jpg/800px-Eurofighter_Typhoon_-_RIAT_2016_%2828551323861%29.jpg",
+                options: ["Dassault Rafale", "Eurofighter Typhoon", "F-16 Fighting Falcon", "JAS 39 Gripen"],
+                explanation: "영국, 독일 등 나토 유럽 국가들의 주력기입니다. 기수 앞쪽의 작은 귀날개(카나드)와 거대한 삼각익(델타익), 그리고 동체 하단의 사각형 공기 흡입구가 큰 특징입니다."
+            },
+            {
+                name: "A-10 Thunderbolt II",
+                nation: "US",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/A-10_Thunderbolt_II_In-flight-2.jpg/800px-A-10_Thunderbolt_II_In-flight-2.jpg",
+                options: ["B-2 Spirit", "C-130 Hercules", "F-15K Slam Eagle", "A-10 Thunderbolt II"],
+                explanation: "미국의 전설적인 지상 공격기(맷돼지)입니다. 기수 앞부분에 장착된 30mm 개틀링 기관포와, 피탄을 대비해 동체 후방 상단에 높게 달린 2개의 엔진이 식별 포인트입니다."
+            },
+            {
+                name: "B-2 Spirit",
+                nation: "US",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/B-2_Spirit_original.jpg/800px-B-2_Spirit_original.jpg",
+                options: ["F-35A Lightning II", "B-2 Spirit", "KF-21 Boramae", "F-22 Raptor"],
+                explanation: "미국의 스텔스 전략 폭격기입니다. 수직 꼬리날개가 전혀 없이 거대한 가오리나 박쥐처럼 생긴 전익기(Flying Wing) 디자인이 가장 큰 특징입니다."
+            },
+            {
+                name: "F-16 Fighting Falcon",
+                nation: "US/ROK/NATO",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/F-16_June_2008.jpg/800px-F-16_June_2008.jpg",
+                options: ["F-16 Fighting Falcon", "F-15K Slam Eagle", "Eurofighter Typhoon", "Dassault Rafale"],
+                explanation: "미국, 한국 등 서방세계에서 가장 널리 쓰이는 베스트셀러 경전투기입니다. 날렵한 단발 엔진 기체로, 조종석 하단에 있는 1개의 둥근 공기 흡입구가 상징적입니다."
+            },
+            {
+                name: "Dassault Rafale",
+                nation: "NATO",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Dassault_Rafale_at_Farnborough_2012.jpg/800px-Dassault_Rafale_at_Farnborough_2012.jpg",
+                options: ["Eurofighter Typhoon", "KF-21 Boramae", "F-15K Slam Eagle", "Dassault Rafale"],
+                explanation: "프랑스의 다목적 전투기입니다. 유로파이터와 유사한 카나드-델타익 구조를 가졌으나, 공기흡입구가 동체 옆면에 둥근 형태로 붙어있고 공중급유 프로브가 고정되어 있는 것이 특징입니다."
+            },
+            {
+                name: "C-130 Hercules",
+                nation: "US/ROK/NATO",
+                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/C-130J_Hercules.jpg/800px-C-130J_Hercules.jpg",
+                options: ["B-2 Spirit", "C-130 Hercules", "A-10 Thunderbolt II", "F-35A Lightning II"],
+                explanation: "서방 진영의 대표적인 전술 수송기입니다. 4개의 터보프롭(프로펠러) 엔진과 고익(동체 위쪽에 붙은 날개), 뭉툭한 둥근 기수가 확실한 식별 포인트입니다."
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let questions = [];
+
+        // Shuffle array helper
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Initialize quiz
+        function init() {
+            // Shuffle questions and options for randomness
+            questions = shuffle([...aircraftData]).map(q => ({
+                ...q,
+                options: shuffle([...q.options])
+            }));
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const q = questions[currentQuestion];
+            
+            // Update UI
+            document.getElementById('q-counter').innerText = `0${currentQuestion + 1}/10`.slice(-5);
+            
+            const imgEl = document.getElementById('aircraft-img');
+            imgEl.src = q.img;
+            imgEl.className = "object-cover w-full h-full"; // reset filters
+            
+            const optionsGrid = document.getElementById('options-grid');
+            optionsGrid.innerHTML = '';
+            
+            q.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "btn-option w-full text-left p-3 text-sm tracking-wider uppercase";
+                btn.innerText = `> ${opt}`;
+                btn.onclick = () => checkAnswer(opt, btn);
+                optionsGrid.appendChild(btn);
+            });
+
+            document.getElementById('feedback-panel').classList.add('hidden');
+        }
+
+        function checkAnswer(selectedOpt, btnElement) {
+            const q = questions[currentQuestion];
+            const isCorrect = selectedOpt === q.name;
+            
+            // Disable all buttons
+            const btns = document.querySelectorAll('.btn-option');
+            btns.forEach(b => b.disabled = true);
+
+            // Highlight answers
+            btns.forEach(b => {
+                if (b.innerText.includes(q.name)) {
+                    b.classList.add('correct');
+                } else if (b === btnElement && !isCorrect) {
+                    b.classList.add('wrong');
+                }
+            });
+
+            // Reveal Image
+            document.getElementById('aircraft-img').classList.add('revealed');
+
+            // Show feedback
+            const feedbackPanel = document.getElementById('feedback-panel');
+            const status = document.getElementById('feedback-status');
+            const text = document.getElementById('feedback-text');
+
+            feedbackPanel.classList.remove('hidden');
+            
+            if (isCorrect) {
+                score++;
+                status.innerText = "[ MATCH CONFIRMED - CORRECT ]";
+                status.className = "text-lg font-bold mb-1 text-[#00ff64]";
+            } else {
+                status.innerText = "[ MISMATCH - TARGET INCORRECT ]";
+                status.className = "text-lg font-bold mb-1 text-[#ff0050]";
+            }
+            
+            text.innerText = `정답 기종: ${q.name}\n\n${q.explanation}`;
+        }
+
+        document.getElementById('next-btn').onclick = () => {
+            currentQuestion++;
+            if (currentQuestion < questions.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        };
+
+        function showResults() {
+            document.querySelector('main').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `${(score / questions.length) * 100}%`;
+        }
+
+        // Start
+        window.onload = init;
+    </script>
+</body>
+</html>
