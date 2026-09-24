@@ -3,330 +3,501 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AERO-ID TACTICAL TRAINING SYSTEM</title>
+    <title>AeroQuest - Military Aircraft ID Training</title>
+    
+    <!-- Google Fonts: Orbitron (미래지향적 영문), Noto Sans KR (한국어) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
-        body {
-            background-color: #030a16;
-            color: #00f0ff;
-            font-family: 'Share Tech Mono', monospace;
-            overflow-x: hidden;
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-magenta: #ff00ff;
+            --cyber-dark: #070714;
+            --panel-bg: rgba(15, 15, 30, 0.7);
         }
 
-        /* HUD & Cyberpunk Elements */
-        .hud-border {
-            border: 1px solid rgba(0, 240, 255, 0.4);
-            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.1), 0 0 15px rgba(0, 240, 255, 0.2);
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--cyber-dark);
+            color: #ffffff;
+            margin: 0;
+            overflow-x: hidden;
+            /* 사이버펑크 스타일 배경 */
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 243, 255, 0.1), transparent 50%),
+                linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%),
+                url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h40v40H0V0zm1 1h38v38H1V1z" fill="rgba(0, 243, 255, 0.03)"/></svg>');
+        }
+
+        .font-cyber {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* 스캔라인(Scanline) 오버레이 효과 */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.6;
+        }
+
+        /* 글래스모피즘(Glassmorphism) 패널 */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
             position: relative;
         }
         
-        .hud-border::before, .hud-border::after {
+        .glass-panel::before {
             content: '';
             position: absolute;
-            width: 10px;
-            height: 10px;
-            border: 2px solid #00f0ff;
+            top: -1px; left: -1px;
+            width: 20px; height: 20px;
+            border-top: 2px solid var(--neon-cyan);
+            border-left: 2px solid var(--neon-cyan);
         }
-        
-        .hud-border::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
-        .hud-border::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
-
-        .scanline {
-            width: 100%;
-            height: 4px;
-            background: rgba(0, 240, 255, 0.4);
+        .glass-panel::after {
+            content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 10;
-            box-shadow: 0 0 10px #00f0ff;
-            animation: scan 4s linear infinite;
-            pointer-events: none;
+            bottom: -1px; right: -1px;
+            width: 20px; height: 20px;
+            border-bottom: 2px solid var(--neon-cyan);
+            border-right: 2px solid var(--neon-cyan);
         }
 
-        @keyframes scan {
-            0% { top: 0; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-
-        .btn-option {
-            background: rgba(0, 20, 40, 0.6);
-            border: 1px solid #00f0ff;
-            transition: all 0.3s;
+        /* 사이버버튼 스타일 */
+        .cyber-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
         }
-
-        .btn-option:hover {
-            background: rgba(0, 240, 255, 0.2);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
-            text-shadow: 0 0 5px #00f0ff;
+        .cyber-btn:hover:not(:disabled) {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-cyan);
         }
-        
-        .btn-option.correct {
-            background: rgba(0, 255, 100, 0.2);
-            border-color: #00ff64;
-            color: #00ff64;
-            box-shadow: 0 0 15px rgba(0, 255, 100, 0.5);
+        .cyber-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
-
-        .btn-option.wrong {
-            background: rgba(255, 0, 80, 0.2);
-            border-color: #ff0050;
-            color: #ff0050;
-            box-shadow: 0 0 15px rgba(255, 0, 80, 0.5);
+        .cyber-btn.correct {
+            background: #00ff66;
+            color: #000;
+            border-color: #00ff66;
+            box-shadow: 0 0 20px #00ff66;
         }
-
-        .glitch-text {
-            text-shadow: 2px 0 0 rgba(255,0,0,0.5), -2px 0 0 rgba(0,255,255,0.5);
+        .cyber-btn.wrong {
+            background: #ff0055;
+            color: #fff;
+            border-color: #ff0055;
+            box-shadow: 0 0 20px #ff0055;
         }
 
-        #image-container img {
-            filter: contrast(1.1) brightness(0.9) sepia(0.3) hue-rotate(180deg);
-            mix-blend-mode: luminosity;
-            transition: filter 0.5s;
+        /* 네온 텍스트 */
+        .neon-text-cyan {
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
         }
-        
-        #image-container img.revealed {
-            filter: none;
-            mix-blend-mode: normal;
+
+        /* 이미지 컨테이너 클리핑 */
+        .img-container {
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+            border: 2px solid rgba(0, 243, 255, 0.5);
+            position: relative;
+        }
+
+        .hud-overlay {
+            position: absolute;
+            top: 10px; left: 10px;
+            color: var(--neon-cyan);
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* 애니메이션 */
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+        .glitch-anim {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Header -->
-    <header class="w-full max-w-4xl mb-6 text-center">
-        <h1 class="text-3xl md:text-5xl font-bold tracking-widest glitch-text mb-2">AERO-ID SYSTEM</h1>
-        <p class="text-sm opacity-70 tracking-widest">[ TACTICAL AIRCRAFT RECOGNITION PROTOCOL - US / ROK / NATO ]</p>
-    </header>
+    <div class="scanlines"></div>
 
-    <!-- Main HUD -->
-    <main class="w-full max-w-4xl hud-border bg-[#02050b] p-6 rounded-sm flex flex-col md:flex-row gap-6">
-        
-        <!-- Image Target Area -->
-        <div class="flex-1 relative">
-            <div class="absolute top-2 left-2 text-xs opacity-70 z-20">TARGET LOCK: <span id="q-counter">01/10</span></div>
-            <div class="hud-border h-64 md:h-80 w-full relative overflow-hidden bg-gray-900 flex items-center justify-center" id="image-container">
-                <div class="scanline"></div>
-                <img id="aircraft-img" src="" alt="Classified Target" class="object-cover w-full h-full">
-            </div>
+    <div class="w-full max-w-4xl z-10">
+        <!-- 헤더 -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-cyber font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 neon-text-cyan">AERO_QUEST</h1>
+            <p class="text-gray-400 mt-2 text-sm tracking-widest font-cyber">MILITARY AIRCRAFT IDENTIFICATION PROTOCOL</p>
+            <p class="text-cyan-400 mt-1 text-xs">US / ROK / NATO 연합 항공기 식별 훈련</p>
+        </header>
+
+        <!-- 시작 화면 -->
+        <div id="start-screen" class="glass-panel p-8 text-center rounded-sm">
+            <h2 class="text-2xl font-bold mb-4 text-cyan-300">식별 시스템에 오신 것을 환영합니다</h2>
+            <p class="text-gray-300 mb-8 leading-relaxed">
+                임의로 제시되는 10개의 군용기 사진을 보고 정확한 기종을 식별하십시오.<br>
+                정답 여부와 함께 해당 기종의 외형적 특징이 브리핑됩니다.
+            </p>
+            <button onclick="startGame()" class="cyber-btn font-cyber text-lg px-10 py-4 uppercase font-bold tracking-wider rounded-sm">
+                Initialize Training
+            </button>
         </div>
 
-        <!-- Controls & Data Area -->
-        <div class="flex-1 flex flex-col justify-between">
-            <div>
-                <h2 class="text-xl mb-4 border-b border-[#00f0ff] pb-2 inline-block">IDENTIFY TARGET:</h2>
-                
-                <div id="options-grid" class="grid grid-cols-1 gap-3">
-                    <!-- Options injected by JS -->
-                </div>
+        <!-- 퀴즈 화면 -->
+        <div id="quiz-screen" class="hidden flex-col gap-6">
+            <!-- HUD 정보 -->
+            <div class="flex justify-between items-end font-cyber text-cyan-400 border-b border-cyan-800 pb-2">
+                <div class="text-lg tracking-widest">TARGET: <span id="question-counter" class="text-white">01/10</span></div>
+                <div class="text-lg tracking-widest">SCORE: <span id="score-display" class="text-white">0</span></div>
             </div>
 
-            <!-- Analysis / Feedback Panel -->
-            <div id="feedback-panel" class="mt-6 hidden">
-                <div class="hud-border p-3 bg-[rgba(0,40,80,0.5)]">
-                    <h3 id="feedback-status" class="text-lg font-bold mb-1"></h3>
-                    <p id="feedback-text" class="text-sm leading-relaxed text-gray-300"></p>
-                    <button id="next-btn" class="mt-3 w-full py-2 border border-[#00f0ff] hover:bg-[#00f0ff] hover:text-black transition-colors font-bold uppercase">
-                        INITIATE NEXT SCAN >>
+            <!-- 이미지 영역 -->
+            <div class="img-container w-full relative bg-gray-900 rounded-sm overflow-hidden aspect-video flex items-center justify-center">
+                <div class="hud-overlay font-cyber text-xs">
+                    SYS.OP. NORMAL<br>
+                    IMG.REC: ACTIVE<br>
+                    REC.SCALE: 800px
+                </div>
+                <!-- 십자선 UI -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+                    <div class="w-full h-[1px] bg-cyan-500 absolute"></div>
+                    <div class="h-full w-[1px] bg-cyan-500 absolute"></div>
+                    <div class="w-16 h-16 border border-cyan-500 rounded-full"></div>
+                </div>
+                <!-- 실제 사진 -->
+                <img id="aircraft-image" src="" alt="Aircraft Target" class="max-w-full max-h-full object-contain relative z-0 shadow-2xl" onerror="handleImageError(this)">
+            </div>
+
+            <!-- 선택지 버튼 -->
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <!-- 버튼들이 자바스크립트로 주입됩니다. -->
+            </div>
+
+            <!-- 피드백(정답해설) 영역 -->
+            <div id="feedback-panel" class="glass-panel p-6 rounded-sm hidden mt-4 border-l-4">
+                <h3 id="feedback-title" class="text-2xl font-bold mb-2 font-cyber"></h3>
+                <p id="feedback-desc" class="text-gray-200 leading-relaxed text-sm md:text-base"></p>
+                <div class="mt-6 flex justify-end">
+                    <button id="next-btn" onclick="nextQuestion()" class="cyber-btn font-cyber px-6 py-2 uppercase font-bold tracking-wider rounded-sm">
+                        Next Target >>
                     </button>
                 </div>
             </div>
         </div>
-    </main>
 
-    <!-- Results Screen -->
-    <div id="results-screen" class="hidden w-full max-w-4xl hud-border bg-[#02050b] p-10 text-center mt-6">
-        <h2 class="text-4xl font-bold mb-4">TRAINING COMPLETE</h2>
-        <p class="text-2xl mb-6">FINAL ACCURACY: <span id="final-score" class="text-[#00ff64]"></span></p>
-        <button onclick="location.reload()" class="px-8 py-3 border border-[#00f0ff] hover:bg-[#00f0ff] hover:text-black transition-colors font-bold">
-            RESTART SIMULATION
-        </button>
+        <!-- 결과 화면 -->
+        <div id="result-screen" class="glass-panel p-10 text-center rounded-sm hidden mt-8">
+            <h2 class="text-3xl font-bold mb-2 font-cyber text-cyan-300">TRAINING COMPLETE</h2>
+            <p class="text-gray-400 mb-6 font-cyber tracking-widest">FINAL SCORE</p>
+            <div class="text-6xl font-black mb-8 font-cyber neon-text-cyan">
+                <span id="final-score">0</span> / 10
+            </div>
+            <p id="result-message" class="text-lg text-gray-200 mb-8"></p>
+            <button onclick="startGame()" class="cyber-btn font-cyber text-lg px-8 py-3 uppercase font-bold tracking-wider rounded-sm">
+                Restart Protocol
+            </button>
+        </div>
     </div>
 
     <script>
-        // Database of military aircraft
-        const aircraftData = [
+        // 군용기 데이터셋 (총 16개 - 다양한 기종)
+        // 위키미디어 공용의 Special:FilePath 방식을 사용하여 안정적인 파일 접근을 유도 (width=800 파라미터 활용)
+        const aircraftDataset = [
             {
-                name: "F-22 Raptor",
-                nation: "US",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/F-22_Raptor_edit1.jpg/800px-F-22_Raptor_edit1.jpg",
-                options: ["F-35 Lightning II", "F-22 Raptor", "KF-21 Boramae", "F-15K Slam Eagle"],
-                explanation: "F-22는 미국의 5세대 스텔스 전투기입니다. 독특한 다이아몬드형 날개와 스텔스를 위한 각진 외형, 그리고 후면의 2차원 추력편향 노즐이 특징입니다."
+                id: "F-22",
+                name: "F-22 랩터 (F-22 Raptor)",
+                imageFilename: "F-22_Raptor_edit1.jpg",
+                description: "[스텔스 전투기] 마름모꼴의 넓은 스텔스 주익과 바깥쪽으로 크게 기울어진 쌍수직미익이 특징입니다. 엔진 노즐이 납작한 2차원 추력편향 노즐로 되어 있어 후면부 스텔스 성능을 극대화했습니다. 현존 최강의 5세대 전투기입니다."
             },
             {
-                name: "F-35A Lightning II",
-                nation: "US/ROK/NATO",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/F-35A_flight_%28cropped%29.jpg/800px-F-35A_flight_%28cropped%29.jpg",
-                options: ["F-22 Raptor", "Eurofighter Typhoon", "F-35A Lightning II", "Dassault Rafale"],
-                explanation: "F-35는 미국, 한국 및 여러 나토 국가에서 운용하는 5세대 스텔스기입니다. 단발 엔진 구조이며 F-22에 비해 동체가 다소 통통한 형상을 띄고 있습니다."
+                id: "F-35",
+                name: "F-35 라이트닝 II (F-35 Lightning II)",
+                imageFilename: "F-35A_flight_(cropped).jpg",
+                description: "[다목적 스텔스 전투기] F-22에 비해 동체가 다소 통통하며 단발 엔진을 사용합니다. 기수 양옆의 공기흡입구가 볼록한 형태(DSI)를 띄고 있으며, 내부 무장창 탑재를 위해 전체적으로 매끄러운 곡선형 형상을 가집니다."
             },
             {
-                name: "F-15K Slam Eagle",
-                nation: "ROK",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/ROKAF_F-15K.jpg/800px-ROKAF_F-15K.jpg",
-                options: ["F-15K Slam Eagle", "F-16 Fighting Falcon", "A-10 Thunderbolt II", "KF-21 Boramae"],
-                explanation: "한국 공군의 핵심 전천후 전폭기인 F-15K입니다. 어두운 회색 도색과 동체 양옆의 거대한 컨포멀 연료탱크, 엄청난 무장 탑재량이 시각적 특징입니다."
+                id: "F-15K",
+                name: "F-15K 슬램 이글 / F-15E (F-15 Strike Eagle)",
+                imageFilename: "F-15E_Strike_Eagle_in_flight.jpg",
+                description: "[전폭기] 크고 우람한 쌍발 엔진과 일자로 곧게 뻗은 두 개의 수직미익(꼬리날개)이 특징입니다. 동체 옆면에 거대한 컨포멀 연료탱크(CFT)가 부착되어 동체가 매우 두꺼워 보이며, 엄청난 무장 탑재량을 자랑합니다."
             },
             {
-                name: "KF-21 Boramae",
-                nation: "ROK",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/KAI_KF-21_Boramae.jpg/800px-KAI_KF-21_Boramae.jpg",
-                options: ["F-22 Raptor", "F-35A Lightning II", "KF-21 Boramae", "Eurofighter Typhoon"],
-                explanation: "한국이 독자 개발한 4.5세대 전투기 보라매입니다. F-22와 흡사한 스텔스 형상을 갖추고 있으나, 초기형은 무장을 동체 하단에 반매립 형태로 장착합니다."
+                id: "KF-21",
+                name: "KF-21 보라매 (KF-21 Boramae)",
+                imageFilename: "KAI_KF-21_Boramae_Seoul_ADEX_2023.jpg",
+                description: "[한국형 4.5세대 전투기] F-22와 유사한 외형을 지녔지만, 내부 무장창 대신 동체 하단에 미사일이 반매립 형태로 장착되는 것이 뚜렷한 시각적 차이입니다. 쌍발 엔진과 바깥으로 기울어진 수직미익을 채택했습니다."
             },
             {
-                name: "Eurofighter Typhoon",
-                nation: "NATO",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Eurofighter_Typhoon_-_RIAT_2016_%2828551323861%29.jpg/800px-Eurofighter_Typhoon_-_RIAT_2016_%2828551323861%29.jpg",
-                options: ["Dassault Rafale", "Eurofighter Typhoon", "F-16 Fighting Falcon", "JAS 39 Gripen"],
-                explanation: "영국, 독일 등 나토 유럽 국가들의 주력기입니다. 기수 앞쪽의 작은 귀날개(카나드)와 거대한 삼각익(델타익), 그리고 동체 하단의 사각형 공기 흡입구가 큰 특징입니다."
+                id: "Eurofighter",
+                name: "유로파이터 타이푼 (Eurofighter Typhoon)",
+                imageFilename: "Eurofighter_Typhoon_2.jpg",
+                description: "[다목적 전투기] 거대한 삼각형 주익(델타익)과 조종석 바로 아래에 위치한 작은 귀날개(카나드)가 가장 큰 외형적 특징입니다. 동체 하단 중앙에 직사각형 모양의 거대한 공기흡입구가 자리잡고 있습니다."
             },
             {
-                name: "A-10 Thunderbolt II",
-                nation: "US",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/A-10_Thunderbolt_II_In-flight-2.jpg/800px-A-10_Thunderbolt_II_In-flight-2.jpg",
-                options: ["B-2 Spirit", "C-130 Hercules", "F-15K Slam Eagle", "A-10 Thunderbolt II"],
-                explanation: "미국의 전설적인 지상 공격기(맷돼지)입니다. 기수 앞부분에 장착된 30mm 개틀링 기관포와, 피탄을 대비해 동체 후방 상단에 높게 달린 2개의 엔진이 식별 포인트입니다."
+                id: "A-10",
+                name: "A-10 썬더볼트 II (A-10 Thunderbolt II)",
+                imageFilename: "A-10_Thunderbolt_II_In-flight.jpg",
+                description: "[공격기] 동체 후방 위쪽에 두 개의 엔진이 돌출되어 달려있는 매우 특이한 형상입니다. 기수 앞부분에는 30mm 개틀링 기관포가 길게 튀어나와 있으며, 날개는 곧게 뻗은 직선익 형태를 띕니다."
             },
             {
-                name: "B-2 Spirit",
-                nation: "US",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/B-2_Spirit_original.jpg/800px-B-2_Spirit_original.jpg",
-                options: ["F-35A Lightning II", "B-2 Spirit", "KF-21 Boramae", "F-22 Raptor"],
-                explanation: "미국의 스텔스 전략 폭격기입니다. 수직 꼬리날개가 전혀 없이 거대한 가오리나 박쥐처럼 생긴 전익기(Flying Wing) 디자인이 가장 큰 특징입니다."
+                id: "B-2",
+                name: "B-2 스피릿 (B-2 Spirit)",
+                imageFilename: "B-2_Spirit_original.jpg",
+                description: "[스텔스 폭격기] 꼬리날개가 아예 없는 '전익기(가오리 형태)' 구조입니다. 전체가 검은색 스텔스 도료로 덮여 있으며, 톱니바퀴 형상의 후방 실루엣 등 레이더 반사를 최소화하기 위한 극단적인 디자인을 보여줍니다."
             },
             {
-                name: "F-16 Fighting Falcon",
-                nation: "US/ROK/NATO",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/F-16_June_2008.jpg/800px-F-16_June_2008.jpg",
-                options: ["F-16 Fighting Falcon", "F-15K Slam Eagle", "Eurofighter Typhoon", "Dassault Rafale"],
-                explanation: "미국, 한국 등 서방세계에서 가장 널리 쓰이는 베스트셀러 경전투기입니다. 날렵한 단발 엔진 기체로, 조종석 하단에 있는 1개의 둥근 공기 흡입구가 상징적입니다."
+                id: "F-16",
+                name: "F-16 파이팅 팔콘 (F-16 Fighting Falcon)",
+                imageFilename: "F-16_June_2008.jpg",
+                description: "[다목적 전투기] 기수 바로 아래에 위치한 커다란 타원형(또는 '스마일' 모양)의 공기흡입구가 가장 큰 특징입니다. 단발 엔진을 사용하며, 조종사의 시야를 넓히기 위해 테두리가 없는 물방울 형태의 캐노피를 채택했습니다."
             },
             {
-                name: "Dassault Rafale",
-                nation: "NATO",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Dassault_Rafale_at_Farnborough_2012.jpg/800px-Dassault_Rafale_at_Farnborough_2012.jpg",
-                options: ["Eurofighter Typhoon", "KF-21 Boramae", "F-15K Slam Eagle", "Dassault Rafale"],
-                explanation: "프랑스의 다목적 전투기입니다. 유로파이터와 유사한 카나드-델타익 구조를 가졌으나, 공기흡입구가 동체 옆면에 둥근 형태로 붙어있고 공중급유 프로브가 고정되어 있는 것이 특징입니다."
+                id: "F-18",
+                name: "F/A-18E/F 슈퍼 호넷 (F/A-18 Super Hornet)",
+                imageFilename: "FA-18C_Hornet_VFA-106_in_flight_2017.jpg",
+                description: "[함재 전투기] 직사각형에 가깝게 각진 형태의 공기흡입구(슈퍼호넷 기준)와 바깥쪽으로 약간 기울어진 V자 형태의 쌍수직미익이 특징입니다. 항공모함 착함을 위해 랜딩기어가 매우 튼튼하고 복잡하게 생겼습니다."
             },
             {
-                name: "C-130 Hercules",
-                nation: "US/ROK/NATO",
-                img: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/C-130J_Hercules.jpg/800px-C-130J_Hercules.jpg",
-                options: ["B-2 Spirit", "C-130 Hercules", "A-10 Thunderbolt II", "F-35A Lightning II"],
-                explanation: "서방 진영의 대표적인 전술 수송기입니다. 4개의 터보프롭(프로펠러) 엔진과 고익(동체 위쪽에 붙은 날개), 뭉툭한 둥근 기수가 확실한 식별 포인트입니다."
+                id: "F-4",
+                name: "F-4 팬텀 II (F-4 Phantom II)",
+                imageFilename: "F-4E_Phantom_II.jpg",
+                description: "[다목적 전투기] 수평미익(꼬리날개)이 아래로 꺾여 있고, 주익(날개) 끝단은 위로 꺾여 있는 독특한 기하학적 구조(V각)를 가졌습니다. 크고 각진 공기흡입구와 함께 '벽돌도 날게 하는' 강력한 쌍발 엔진이 특징입니다."
+            },
+            {
+                id: "F-14",
+                name: "F-14 톰캣 (F-14 Tomcat)",
+                imageFilename: "F-14A_Tomcat_VF-114_in_flight_1989.jpg",
+                description: "[함재 전투기] 비행 속도에 따라 날개가 접히고 펴지는 가변익 기종입니다. 두 개의 엔진이 동체 양옆으로 멀리 떨어져 배치된 독특한 형태를 지니며, 영화 '탑건'의 주역기로 유명합니다."
+            },
+            {
+                id: "B-1B",
+                name: "B-1B 랜서 (B-1B Lancer)",
+                imageFilename: "B-1B_Lancer_in_flight.jpg",
+                description: "[전략 폭격기] 백조나 뼈대(Bone)를 연상시키는 길고 매끄러운 기수 형상을 가졌습니다. F-14처럼 날개를 뒤로 접을 수 있는 가변익을 채택하여 저공 고속 침투에 특화된 유선형 디자인입니다."
+            },
+            {
+                id: "C-130",
+                name: "C-130 허큘리스 (C-130 Hercules)",
+                imageFilename: "Lockheed_C-130_Hercules.jpg",
+                description: "[전술 수송기] 날개에 4개의 프로펠러(터보프롭) 엔진이 달려있는 가장 대표적인 형태의 군용 수송기입니다. 짧고 뭉툭한 기수와 크고 뚱뚱한 화물칸 동체를 가지고 있습니다."
+            },
+            {
+                id: "AH-64",
+                name: "AH-64 아파치 (AH-64 Apache)",
+                imageFilename: "AH-64_Apache.jpg",
+                description: "[공격 헬리콥터] 조종사와 사수가 앞뒤로 앉는 탠덤(직렬) 좌석 배치입니다. 기수 맨 앞에 TADS/PNVS 센서 타워가 달려있고 그 밑에 30mm 기관포가 있으며, 동체 양옆의 짧은 날개(스터브윙)에 미사일을 장착합니다."
+            },
+            {
+                id: "SR-71",
+                name: "SR-71 블랙버드 (SR-71 Blackbird)",
+                imageFilename: "Lockheed_SR-71_Blackbird.jpg",
+                description: "[전략 정찰기] 외계 비행선처럼 생긴 극단적으로 뾰족하고 긴 검은색 동체를 가졌습니다. 주익 중간에 기체 전체 크기와 맞먹는 거대한 원뿔형 엔진(터보램제트) 2개가 달려있는 것이 마하 3 고속 비행의 비결입니다."
+            },
+            {
+                id: "Rafale",
+                name: "다쏘 라팔 (Dassault Rafale)",
+                imageFilename: "Dassault_Rafale_-_01.jpg",
+                description: "[다목적 전투기] 유로파이터와 비슷한 델타익+카나드 구조이지만, 공기흡입구가 동체 하단이 아닌 동체 양 옆면(조종석 뒤쪽)에 위치하여 타원형으로 곡선을 이루고 있는 것이 유로파이터와의 가장 큰 외형적 차이점입니다."
             }
         ];
 
-        let currentQuestion = 0;
-        let score = 0;
-        let questions = [];
-
-        // Shuffle array helper
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
+        /* 유틸리티: 위키미디어 이미지 URL 생성 */
+        function getWikiImageUrl(filename) {
+            return `https://commons.wikimedia.org/wiki/Special:FilePath/${filename}?width=800`;
         }
 
-        // Initialize quiz
-        function init() {
-            // Shuffle questions and options for randomness
-            questions = shuffle([...aircraftData]).map(q => ({
-                ...q,
-                options: shuffle([...q.options])
-            }));
+        /* 만약 위키미디어 이미지가 로드 실패할 경우 Placehold.co로 대체 (UX 유지 목적) */
+        function handleImageError(img) {
+            console.warn("Image load failed, using fallback.");
+            const currentName = img.getAttribute('data-aircraft-name') || "Unknown";
+            img.src = `https://placehold.co/800x450/101020/00f3ff?text=${encodeURIComponent(currentName)}+%5BData+Missing%5D`;
+        }
+
+        // 상태 변수
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+
+        // DOM 요소
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const aircraftImage = document.getElementById('aircraft-image');
+        const optionsContainer = document.getElementById('options-container');
+        const feedbackPanel = document.getElementById('feedback-panel');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackDesc = document.getElementById('feedback-desc');
+        const nextBtn = document.getElementById('next-btn');
+        const questionCounter = document.getElementById('question-counter');
+        const scoreDisplay = document.getElementById('score-display');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const resultMessage = document.getElementById('result-message');
+
+        // 배열 셔플 함수 (피셔-예이츠)
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // 게임 시작
+        function startGame() {
+            startScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            quizScreen.classList.replace('hidden', 'flex');
+
+            score = 0;
+            currentQuestionIndex = 0;
+            scoreDisplay.textContent = score;
+
+            // 전체 데이터에서 10개를 무작위 추출
+            const shuffledData = shuffleArray(aircraftDataset);
+            currentQuestions = shuffledData.slice(0, 10);
+
             loadQuestion();
         }
 
+        // 퀴즈 문제 로드
         function loadQuestion() {
-            const q = questions[currentQuestion];
+            isAnswered = false;
+            feedbackPanel.classList.add('hidden');
             
-            // Update UI
-            document.getElementById('q-counter').innerText = `0${currentQuestion + 1}/10`.slice(-5);
+            const currentAircraft = currentQuestions[currentQuestionIndex];
             
-            const imgEl = document.getElementById('aircraft-img');
-            imgEl.src = q.img;
-            imgEl.className = "object-cover w-full h-full"; // reset filters
+            // UI 업데이트
+            questionCounter.textContent = `${String(currentQuestionIndex + 1).padStart(2, '0')}/10`;
+            aircraftImage.src = getWikiImageUrl(currentAircraft.imageFilename);
+            aircraftImage.setAttribute('data-aircraft-name', currentAircraft.name);
             
-            const optionsGrid = document.getElementById('options-grid');
-            optionsGrid.innerHTML = '';
+            // 보기 생성 (정답 1개 + 오답 3개)
+            let wrongOptions = aircraftDataset.filter(ac => ac.id !== currentAircraft.id);
+            wrongOptions = shuffleArray(wrongOptions).slice(0, 3);
             
-            q.options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = "btn-option w-full text-left p-3 text-sm tracking-wider uppercase";
-                btn.innerText = `> ${opt}`;
-                btn.onclick = () => checkAnswer(opt, btn);
-                optionsGrid.appendChild(btn);
-            });
+            let options = [currentAircraft, ...wrongOptions];
+            options = shuffleArray(options); // 보기 섞기
 
-            document.getElementById('feedback-panel').classList.add('hidden');
+            // 버튼 렌더링
+            optionsContainer.innerHTML = '';
+            options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'cyber-btn p-4 rounded-sm text-sm md:text-base font-bold tracking-wide text-left flex items-center justify-between';
+                btn.innerHTML = `<span>[0${index + 1}]</span> <span>${option.name}</span>`;
+                
+                btn.onclick = () => selectAnswer(option, btn);
+                optionsContainer.appendChild(btn);
+            });
         }
 
-        function checkAnswer(selectedOpt, btnElement) {
-            const q = questions[currentQuestion];
-            const isCorrect = selectedOpt === q.name;
-            
-            // Disable all buttons
-            const btns = document.querySelectorAll('.btn-option');
-            btns.forEach(b => b.disabled = true);
+        // 답변 선택 처리
+        function selectAnswer(selectedOption, buttonElement) {
+            if (isAnswered) return;
+            isAnswered = true;
 
-            // Highlight answers
-            btns.forEach(b => {
-                if (b.innerText.includes(q.name)) {
-                    b.classList.add('correct');
-                } else if (b === btnElement && !isCorrect) {
-                    b.classList.add('wrong');
+            const currentAircraft = currentQuestions[currentQuestionIndex];
+            const isCorrect = selectedOption.id === currentAircraft.id;
+            
+            const allButtons = optionsContainer.querySelectorAll('button');
+            
+            // 모든 버튼 비활성화 및 정답/오답 표시
+            allButtons.forEach(btn => {
+                btn.disabled = true;
+                const btnName = btn.querySelector('span:nth-child(2)').textContent;
+                
+                if (btnName === currentAircraft.name) {
+                    // 정답인 버튼은 무조건 초록색으로 하이라이트
+                    btn.classList.add('correct');
+                } else if (btn === buttonElement && !isCorrect) {
+                    // 선택한 버튼이 오답이면 빨간색 하이라이트
+                    btn.classList.add('wrong');
                 }
             });
 
-            // Reveal Image
-            document.getElementById('aircraft-img').classList.add('revealed');
-
-            // Show feedback
-            const feedbackPanel = document.getElementById('feedback-panel');
-            const status = document.getElementById('feedback-status');
-            const text = document.getElementById('feedback-text');
-
+            // 피드백 패널 업데이트
             feedbackPanel.classList.remove('hidden');
-            
             if (isCorrect) {
                 score++;
-                status.innerText = "[ MATCH CONFIRMED - CORRECT ]";
-                status.className = "text-lg font-bold mb-1 text-[#00ff64]";
+                scoreDisplay.textContent = score;
+                feedbackPanel.style.borderColor = '#00ff66';
+                feedbackTitle.innerHTML = `<span class="text-[#00ff66]">MISSION SUCCESS:</span> 정확하게 식별했습니다.`;
+                // 시각적 피드백
+                aircraftImage.classList.add('border-[#00ff66]');
+                setTimeout(() => aircraftImage.classList.remove('border-[#00ff66]'), 500);
             } else {
-                status.innerText = "[ MISMATCH - TARGET INCORRECT ]";
-                status.className = "text-lg font-bold mb-1 text-[#ff0050]";
+                feedbackPanel.style.borderColor = '#ff0055';
+                feedbackTitle.innerHTML = `<span class="text-[#ff0055]">SYSTEM ERROR:</span> 오답입니다. 정답은 <span class="text-white">${currentAircraft.name}</span> 입니다.`;
+                
+                // 시각적 글리치 피드백
+                document.body.classList.add('glitch-anim');
+                setTimeout(() => document.body.classList.remove('glitch-anim'), 300);
             }
             
-            text.innerText = `정답 기종: ${q.name}\n\n${q.explanation}`;
+            // 외형적 특징 설명 주입
+            feedbackDesc.textContent = currentAircraft.description;
+            
+            // 마지막 문제인 경우 버튼 텍스트 변경
+            if (currentQuestionIndex === 9) {
+                nextBtn.textContent = "Show Final Report";
+            } else {
+                nextBtn.textContent = "Next Target >>";
+            }
+
+            // 피드백 패널로 스크롤 부드럽게 이동
+            feedbackPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        document.getElementById('next-btn').onclick = () => {
-            currentQuestion++;
-            if (currentQuestion < questions.length) {
+        // 다음 문제로 넘어가기
+        function nextQuestion() {
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < 10) {
                 loadQuestion();
+                // 위로 스크롤
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
                 showResults();
             }
-        };
-
-        function showResults() {
-            document.querySelector('main').classList.add('hidden');
-            document.getElementById('results-screen').classList.remove('hidden');
-            document.getElementById('final-score').innerText = `${(score / questions.length) * 100}%`;
         }
 
-        // Start
-        window.onload = init;
+        // 결과 화면 표시
+        function showResults() {
+            quizScreen.classList.replace('flex', 'hidden');
+            resultScreen.classList.remove('hidden');
+            
+            finalScoreDisplay.textContent = score;
+            
+            // 점수에 따른 메시지
+            if (score === 10) {
+                resultMessage.innerHTML = "<span class='text-cyan-400 font-bold'>완벽합니다, 사령관님!</span> 모든 기종을 완벽하게 마스터하셨습니다.";
+            } else if (score >= 7) {
+                resultMessage.innerHTML = "<span class='text-green-400 font-bold'>우수한 성적입니다.</span> 실전에서도 훌륭한 성과를 기대합니다.";
+            } else if (score >= 4) {
+                resultMessage.innerHTML = "<span class='text-yellow-400 font-bold'>추가 훈련이 필요합니다.</span> 각 기종의 특징을 다시 한 번 숙지하십시오.";
+            } else {
+                resultMessage.innerHTML = "<span class='text-red-500 font-bold'>위험 수준입니다.</span> 아군기를 오인 사격하지 않도록 재훈련을 권장합니다.";
+            }
+        }
     </script>
 </body>
 </html>
