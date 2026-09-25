@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air-Craft Identification System [HUD]</title>
+    
+    <!-- Load Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        :root {
+            --neon-cyan: #00ffff;
+            --neon-magenta: #ff00ff;
+            --bg-dark: #0a0a10;
+            --text-main: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Noto Sans KR', sans-serif;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        h1, h2, h3, .hud-text {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Scanline Overlay */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.6;
+        }
+
+        /* HUD Border styling */
+        .hud-border {
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(0, 255, 255, 0.1);
+            position: relative;
+        }
+        
+        .hud-border::before, .hud-border::after {
+            content: '';
+            position: absolute;
+            width: 10px; height: 10px;
+            border-color: var(--neon-cyan);
+            border-style: solid;
+        }
+        .hud-border::before {
+            top: -1px; left: -1px;
+            border-width: 2px 0 0 2px;
+        }
+        .hud-border::after {
+            bottom: -1px; right: -1px;
+            border-width: 0 2px 2px 0;
+        }
+
+        /* Cyberpunk Buttons */
+        .cyber-btn {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', 'Noto Sans KR', sans-serif;
+            text-transform: uppercase;
+            position: relative;
+            transition: all 0.3s ease;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        .cyber-btn:hover, .cyber-btn:active {
+            background: var(--neon-cyan);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .cyber-btn-magenta {
+            border-color: var(--neon-magenta);
+            color: var(--neon-magenta);
+        }
+        .cyber-btn-magenta:hover, .cyber-btn-magenta:active {
+            background: var(--neon-magenta);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--neon-magenta);
+        }
+
+        /* Image Frame */
+        .target-frame {
+            position: relative;
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            overflow: hidden;
+        }
+        
+        .target-crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px; height: 50px;
+            border: 1px solid rgba(255, 0, 255, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .target-crosshair::before, .target-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 0, 255, 0.4);
+        }
+        .target-crosshair::before { top: 24px; left: -10px; width: 70px; height: 1px; }
+        .target-crosshair::after { top: -10px; left: 24px; width: 1px; height: 70px; }
+
+        /* Animations */
+        @keyframes flicker {
+            0% { opacity: 1; }
+            5% { opacity: 0.8; }
+            10% { opacity: 1; }
+            15% { opacity: 0.3; }
+            20% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+        .glitch-text {
+            animation: flicker 4s infinite alternate;
+        }
+
+        /* View Transitions */
+        .view-hidden { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="scanlines"></div>
+
+    <main class="w-full max-w-4xl hud-border p-6 md:p-10 bg-black/40 backdrop-blur-sm z-10">
+        
+        <!-- HEADER -->
+        <header class="flex justify-between items-center border-b border-[var(--neon-cyan)] pb-4 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-4xl text-[var(--neon-cyan)] glitch-text font-black tracking-wider">A.I.R. SYSTEM</h1>
+                <p class="text-xs text-[var(--neon-cyan)] opacity-70">AIRCRAFT IDENTIFICATION RADAR v2.0</p>
+            </div>
+            <div id="status-indicator" class="text-[var(--neon-magenta)] hud-text text-sm animate-pulse">
+                STATUS: WAITING
+            </div>
+        </header>
+
+        <!-- SCREEN 1: Theme Selection -->
+        <section id="screen-start" class="flex flex-col gap-6">
+            <div class="text-center mb-4">
+                <h2 class="text-xl md:text-2xl mb-2 text-white font-bold">임무 모듈 선택 (SELECT MISSION MODULE)</h2>
+                <p class="text-sm text-gray-400">분석을 진행할 기체 식별 프로토콜을 선택하십시오.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="startTheme(0)" class="cyber-btn p-6 text-left flex flex-col gap-2">
+                    <span class="hud-text text-sm opacity-70">MODULE 01</span>
+                    <span class="font-bold text-lg">비슷한 기종 1:1 디테일 비교</span>
+                    <span class="text-xs text-gray-400 font-sans">F-15 vs Su-27 계열, 라팔 vs 유로파이터 등 외형 디테일 분석</span>
+                </button>
+                <button onclick="startTheme(1)" class="cyber-btn p-6 text-left flex flex-col gap-2">
+                    <span class="hud-text text-sm opacity-70">MODULE 02</span>
+                    <span class="font-bold text-lg">함재기 및 해상초계기</span>
+                    <span class="text-xs text-gray-400 font-sans">P-8, E-2D, F/A-18, F-35C 등 해상 작전 기체 식별</span>
+                </button>
+                <button onclick="startTheme(2)" class="cyber-btn p-6 text-left flex flex-col gap-2">
+                    <span class="hud-text text-sm opacity-70">MODULE 03</span>
+                    <span class="font-bold text-lg">스텔스 무인기 / 차세대 기체</span>
+                    <span class="text-xs text-gray-400 font-sans">F-22, F-35, RQ-4 등 최첨단 스텔스/무인 기종 식별</span>
+                </button>
+                <button onclick="startTheme(3)" class="cyber-btn p-6 text-left flex flex-col gap-2">
+                    <span class="hud-text text-sm opacity-70">MODULE 04</span>
+                    <span class="font-bold text-lg">특정 임무기 분석</span>
+                    <span class="text-xs text-gray-400 font-sans">전자전기, 조기경보기, 공격기 등 특수 목적 기체 식별</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: Quiz -->
+        <section id="screen-quiz" class="view-hidden flex flex-col gap-6">
+            <div class="flex justify-between items-center">
+                <h2 id="quiz-theme-title" class="text-lg md:text-xl font-bold text-white"></h2>
+                <div class="hud-text text-[var(--neon-cyan)] border border-[var(--neon-cyan)] px-3 py-1">
+                    TARGET: <span id="question-counter">1 / 3</span>
+                </div>
+            </div>
+
+            <div class="target-frame w-full h-64 md:h-96 bg-gray-900 flex items-center justify-center">
+                <!-- Fallback background image in case Wikimedia blocks hotlinking occasionally, though these are static -->
+                <img id="aircraft-image" src="" alt="Unknown Aircraft" class="w-full h-full object-cover opacity-90 transition-opacity duration-500" />
+                <div class="target-crosshair"></div>
+                <div class="absolute top-2 left-2 text-xs text-[var(--neon-cyan)] bg-black/50 px-2 py-1 hud-text">VISUAL LINK ESTABLISHED</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4" id="options-container">
+                <!-- Options injected via JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN 3: Feedback -->
+        <section id="screen-feedback" class="view-hidden flex flex-col gap-6 text-center py-8">
+            <div id="feedback-status" class="text-4xl font-black hud-text mb-2"></div>
+            
+            <div class="hud-border p-6 bg-gray-900/50 text-left">
+                <h3 class="text-[var(--neon-cyan)] mb-2 hud-text">ANALYSIS REPORT</h3>
+                <p class="text-xl font-bold mb-4 text-white">정답 기종: <span id="correct-answer-text" class="text-[var(--neon-magenta)]"></span></p>
+                <p id="explanation-text" class="text-gray-300 leading-relaxed font-sans text-sm md:text-base"></p>
+            </div>
+
+            <button onclick="nextStep()" class="cyber-btn py-4 px-8 self-center mt-4 w-full md:w-auto">
+                NEXT PROTOCOL (다음)
+            </button>
+        </section>
+
+        <!-- SCREEN 4: Results -->
+        <section id="screen-result" class="view-hidden flex flex-col gap-6 text-center py-10">
+            <h2 class="text-3xl font-bold text-white mb-2">MISSION ACCOMPLISHED</h2>
+            
+            <div class="hud-border p-8 bg-gray-900/50 inline-block mx-auto">
+                <p class="text-[var(--neon-cyan)] hud-text text-sm mb-2">IDENTIFICATION RATE</p>
+                <div class="text-6xl font-black text-[var(--neon-magenta)] glitch-text">
+                    <span id="final-score">0</span> / 3
+                </div>
+            </div>
+
+            <p id="result-message" class="text-gray-400 mt-4 font-sans"></p>
+
+            <button onclick="resetApp()" class="cyber-btn cyber-btn-magenta py-4 px-8 self-center mt-6 w-full md:w-auto">
+                SYSTEM REBOOT (처음으로)
+            </button>
+        </section>
+
+    </main>
+
+    <script>
+        /* State Variables */
+        let currentThemeIndex = 0;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        
+        /* Quiz Database */
+        const quizData = [
+            // Theme 0: Detail Comparison
+            {
+                title: "비슷한 기종 1:1 디테일 비교",
+                questions: [
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/F-15K_Slam_Eagle_taking_off.jpg/800px-F-15K_Slam_Eagle_taking_off.jpg",
+                        options: ["F-15K (Slam Eagle)", "Su-27 (Flanker)", "F-14 (Tomcat)", "MiG-29 (Fulcrum)"],
+                        correct: 0,
+                        exp: "정면/측면에서 보았을 때 거대한 사각형 공기흡입구(Intake)와 쌍발 엔진, 넓은 주익을 가진 것이 특징입니다. Su-27 계열은 기수가 아래로 처진 형태이며, F-15는 기수가 뾰족하고 직선적인 형태를 띕니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Dassault_Rafale_-_RIAT_2009_%288339894087%29.jpg/800px-Dassault_Rafale_-_RIAT_2009_%288339894087%29.jpg",
+                        options: ["Eurofighter Typhoon", "JAS 39 Gripen", "Dassault Rafale", "Mirage 2000"],
+                        correct: 2,
+                        exp: "라팔은 유로파이터와 비슷한 델타익+카나드 구조이지만, 카나드(귀날개)가 조종석 바로 뒤에 바짝 붙어있고 공기흡입구가 동체 옆구리에 둥글게 자리잡고 있습니다. 반면 유로파이터는 카나드가 기수 쪽에 멀리 떨어져 있고 흡입구가 동체 하단에 사각형으로 있습니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Eurofighter_Typhoon_F2_of_11_Sqn_RAF.jpg/800px-Eurofighter_Typhoon_F2_of_11_Sqn_RAF.jpg",
+                        options: ["Dassault Rafale", "Eurofighter Typhoon", "J-10", "F-16 Fighting Falcon"],
+                        correct: 1,
+                        exp: "유로파이터 타이푼입니다. 동체 하단에 위치한 크고 각진 사각형 공기흡입구와 조종석과 거리가 먼 기수 쪽 카나드가 핵심 식별 포인트입니다."
+                    }
+                ]
+            },
+            // Theme 1: Carrier & Maritime
+            {
+                title: "함재기 및 해상초계기 전용",
+                questions: [
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/F-18E_Super_Hornet_VFA-14.jpg/800px-F-18E_Super_Hornet_VFA-14.jpg",
+                        options: ["F-35C", "F/A-18E Super Hornet", "F-14 Tomcat", "EA-18G Growler"],
+                        correct: 1,
+                        exp: "F/A-18E 슈퍼 호넷은 구형(레거시) 호넷과 달리 공기흡입구가 각진 사각형(평행사변형) 모양입니다. 주익 뿌리 부분(스트레이크)이 매우 넓고 윙팁에 보통 미사일 레일이 장착되어 있습니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/P-8A_Poseidon_of_VP-16_in_flight_over_the_Okinawa_trough_on_25_February_2014.JPG/800px-P-8A_Poseidon_of_VP-16_in_flight_over_the_Okinawa_trough_on_25_February_2014.JPG",
+                        options: ["C-130 Hercules", "E-737 Peace Eye", "P-3 Orion", "P-8 Poseidon"],
+                        correct: 3,
+                        exp: "P-8 포세이돈은 민항기인 보잉 737을 기반으로 제작되었습니다. 동체 상단 안테나들과 날개 끝의 레이크드 윙팁, 동체 하단의 무장창이 민항기와 구분되는 해상초계기의 특징입니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/F-35C_Lightning_II_of_VFA-101_in_flight_over_the_Gulf_of_Mexico_on_1_October_2013_%28131001-N-UK306-039%29.jpg/800px-F-35C_Lightning_II_of_VFA-101_in_flight_over_the_Gulf_of_Mexico_on_1_October_2013_%28131001-N-UK306-039%29.jpg",
+                        options: ["F-35A", "F-35B", "F-35C", "F-22 Raptor"],
+                        correct: 2,
+                        exp: "F-35C는 미 해군용 함재기 버전으로, 저속 착함을 위해 A/B형에 비해 주익과 미익의 면적이 훨씬 넓고 날개 끝을 접을 수 있도록 설계된 절취선이 보이는 것이 특징입니다."
+                    }
+                ]
+            },
+            // Theme 2: Stealth / UAV
+            {
+                title: "스텔스 무인기 / 차세대 기체",
+                questions: [
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/F-22_Raptor_edit1_%28cropped%29.jpg/800px-F-22_Raptor_edit1_%28cropped%29.jpg",
+                        options: ["F-35A Lightning II", "F-22 Raptor", "B-2 Spirit", "Su-57"],
+                        correct: 1,
+                        exp: "F-22 랩터는 쌍발 엔진을 탑재하여 덩치가 크고, 다이아몬드 형태의 넓은 주익과 톱니바퀴 처리가 된 배기구(2차원 추력편향 노즐)가 특징입니다. 단발 엔진인 F-35와 확실히 구분됩니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/USAF_F-35A_Lightning_II.jpg/800px-USAF_F-35A_Lightning_II.jpg",
+                        options: ["J-20", "F-22 Raptor", "F-117 Nighthawk", "F-35A Lightning II"],
+                        correct: 3,
+                        exp: "F-35A는 F-22에 비해 기체가 통통하고 단발 엔진을 사용합니다. 조종석 캐노피가 앞으로 열리며, 공기흡입구가 동체 양옆에 DSI(다이버터리스) 형태로 튀어나온 것이 특징입니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/RQ-4_Global_Hawk_taxiing.jpg/800px-RQ-4_Global_Hawk_taxiing.jpg",
+                        options: ["MQ-9 Reaper", "RQ-4 Global Hawk", "X-47B", "RQ-170 Sentinel"],
+                        correct: 1,
+                        exp: "RQ-4 글로벌 호크는 고고도 장기체공 무인기입니다. 조종석이 없는 대신 기수 앞부분이 위성통신 안테나를 품고 있어 둥글고 크게 부풀어 오르고(고래상어 형태), 글라이더처럼 매우 길고 얇은 직선익을 가졌습니다."
+                    }
+                ]
+            },
+            // Theme 3: Special Mission
+            {
+                title: "특정 임무기 분석",
+                questions: [
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/EA-18G_Growler_VAQ-132_in_flight_2011.jpg/800px-EA-18G_Growler_VAQ-132_in_flight_2011.jpg",
+                        options: ["F/A-18F Super Hornet", "EA-18G Growler", "F-15E Strike Eagle", "EF-111 Raven"],
+                        correct: 1,
+                        exp: "전자전기인 EA-18G 그라울러는 F/A-18F를 기반으로 하지만, 윙팁(날개 끝)에 미사일 대신 럭비공 모양의 ALQ-218 전술재밍 수신기가 달려있고, 날개 아래 육중한 재밍 포드를 장착하는 것이 특징입니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/E-3_Sentry_USAF.jpg/800px-E-3_Sentry_USAF.jpg",
+                        options: ["E-3 Sentry", "E-737 Peace Eye", "E-8 Joint STARS", "RC-135 Rivet Joint"],
+                        correct: 0,
+                        exp: "E-3 센트리 조기경보기(AWACS)는 보잉 707 동체 위에 거대한 원반형 회전식 레이더 돔(로토돔)을 얹은 것이 가장 큰 특징입니다."
+                    },
+                    {
+                        img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/A-10_Thunderbolt_II_in_flight_over_Afghanistan_2008.jpg/800px-A-10_Thunderbolt_II_in_flight_over_Afghanistan_2008.jpg",
+                        options: ["Su-25 Frogfoot", "AC-130", "F-111 Aardvark", "A-10 Thunderbolt II"],
+                        correct: 3,
+                        exp: "A-10 썬더볼트 II는 근접항공지원(CAS) 특화 공격기입니다. 동체 후방 상단에 높게 솟아있는 쌍발 터보팬 엔진과 직선형 날개, 그리고 기수의 30mm 개틀링 기관포가 독보적인 식별 포인트입니다."
+                    }
+                ]
+            }
+        ];
+
+        const els = {
+            screenStart: document.getElementById('screen-start'),
+            screenQuiz: document.getElementById('screen-quiz'),
+            screenFeedback: document.getElementById('screen-feedback'),
+            screenResult: document.getElementById('screen-result'),
+            statusIndicator: document.getElementById('status-indicator'),
+            quizThemeTitle: document.getElementById('quiz-theme-title'),
+            questionCounter: document.getElementById('question-counter'),
+            aircraftImage: document.getElementById('aircraft-image'),
+            optionsContainer: document.getElementById('options-container'),
+            feedbackStatus: document.getElementById('feedback-status'),
+            correctAnswerText: document.getElementById('correct-answer-text'),
+            explanationText: document.getElementById('explanation-text'),
+            finalScore: document.getElementById('final-score'),
+            resultMessage: document.getElementById('result-message')
+        };
+
+        function switchView(viewId) {
+            els.screenStart.classList.add('view-hidden');
+            els.screenQuiz.classList.add('view-hidden');
+            els.screenFeedback.classList.add('view-hidden');
+            els.screenResult.classList.add('view-hidden');
+            
+            document.getElementById(viewId).classList.remove('view-hidden');
+        }
+
+        function startTheme(themeIndex) {
+            currentThemeIndex = themeIndex;
+            currentQuestionIndex = 0;
+            score = 0;
+            
+            els.statusIndicator.innerText = "STATUS: ENGAGED";
+            els.statusIndicator.style.color = "var(--neon-cyan)";
+            
+            const themeData = quizData[currentThemeIndex];
+            els.quizThemeTitle.innerText = themeData.title;
+            
+            loadQuestion();
+            switchView('screen-quiz');
+        }
+
+        function loadQuestion() {
+            const currentQ = quizData[currentThemeIndex].questions[currentQuestionIndex];
+            
+            // Setup HUD
+            els.questionCounter.innerText = `${currentQuestionIndex + 1} / 3`;
+            
+            // Set Image
+            els.aircraftImage.style.opacity = '0.2'; // glitch effect
+            els.aircraftImage.src = currentQ.img;
+            
+            setTimeout(() => {
+                els.aircraftImage.style.opacity = '0.9';
+            }, 300);
+
+            // Generate Buttons
+            els.optionsContainer.innerHTML = '';
+            currentQ.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'cyber-btn p-4 w-full text-center text-sm md:text-base font-bold truncate';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(index);
+                els.optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIndex) {
+            const currentQ = quizData[currentThemeIndex].questions[currentQuestionIndex];
+            const isCorrect = selectedIndex === currentQ.correct;
+            
+            if (isCorrect) score++;
+
+            // Populate feedback screen
+            els.feedbackStatus.innerText = isCorrect ? "TARGET IDENTIFIED" : "MISIDENTIFICATION";
+            els.feedbackStatus.style.color = isCorrect ? "var(--neon-cyan)" : "var(--neon-magenta)";
+            
+            els.correctAnswerText.innerText = currentQ.options[currentQ.correct];
+            els.explanationText.innerText = currentQ.exp;
+
+            switchView('screen-feedback');
+        }
+
+        function nextStep() {
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < 3) {
+                loadQuestion();
+                switchView('screen-quiz');
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            els.statusIndicator.innerText = "STATUS: MISSION END";
+            els.statusIndicator.style.color = "gray";
+            
+            els.finalScore.innerText = score;
+            
+            let msg = "";
+            if (score === 3) msg = "완벽합니다! 최고의 식별 능력을 보유하셨군요.";
+            else if (score === 2) msg = "훌륭합니다. 실전에 투입되어도 손색이 없습니다.";
+            else msg = "기체 식별 훈련이 더 필요해 보입니다. 다시 시도하십시오.";
+            
+            els.resultMessage.innerText = msg;
+            switchView('screen-result');
+        }
+
+        function resetApp() {
+            els.statusIndicator.innerText = "STATUS: WAITING";
+            els.statusIndicator.style.color = "var(--neon-magenta)";
+            switchView('screen-start');
+        }
+    </script>
+</body>
+</html>
